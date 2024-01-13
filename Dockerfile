@@ -1,4 +1,4 @@
-#docker build --no-cache -t sillytavern:latest .; docker run -it -p 8000:8000 --name "sillytavern" --rm sillytavern:latest
+#docker build --no-cache -t docker-st:latest .; docker run -it -p 8000:8000 --name "docker-st" --rm docker-st:latest
 FROM node:19.1.0-alpine3.16
 
 # Arguments
@@ -58,6 +58,8 @@ RUN sed -i "s/securityOverride: false/securityOverride: true/" /home/node/app/de
 RUN sed -i "s/whitelistMode: true/whitelistMode: false/" /home/node/app/default/config.yaml
 
 RUN sed -i "s/listen: false/listen: true/" /home/node/app/default/config.yaml
+
+RUN sed -i "s/allowKeysExposure: false/allowKeysExposure: true/" /home/node/app/default/config.yaml
 
 EXPOSE 8000
 
