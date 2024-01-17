@@ -2,28 +2,6 @@
 FROM node:20-bookworm
 ENV DEBIAN_FRONTEND noninteractive
 
-# image captioning module
-# Salesforce/blip-image-captioning-large - good base model
-# Salesforce/blip-image-captioning-base - slightly faster but less accurate
-#
-# sentiment classification model
-# nateraw/bert-base-uncased-emotion = 6 supported emotions<br>
-# joeddav/distilbert-base-uncased-go-emotions-student = 28 supported emotions
-# 
-# story summarization module
-# slauw87/bart_summarisation - general purpose summarization model
-# Qiliang/bart-large-cnn-samsum-ChatGPT_v3 - summarization model optimized for chats
-# Qiliang/bart-large-cnn-samsum-ElectrifAi_v10 - nice results so far, but still being evaluated
-# distilbart-xsum-12-3 - faster, but pretty basic alternative
-# 
-# SD picture generation
-# ckpt/anything-v4.5-vae-swapped - anime style model
-# hakurei/waifu-diffusion - anime style model
-# philz1337/clarity - realistic style model
-# prompthero/openjourney - midjourney style model
-# ckpt/sd15 - base SD 1.5
-# stabilityai/stable-diffusion-2-1-base - base SD 2.1
-
 # Arguments
 ARG APP_HOME=/home/node/app
 
@@ -32,15 +10,33 @@ ARG PYTHON_VER=3.11.0
 ARG MODULES="caption,summarize,classify,sd,silero-tts,rvc,chromadb,whisper-stt,talkinghead"
 ENV MODULES=${MODULES:-$MODULES}
 
+# sentiment classification model
+# nateraw/bert-base-uncased-emotion = 6 supported emotions<br>
+# joeddav/distilbert-base-uncased-go-emotions-student = 28 supported emotions
 ARG CLASSIFICATION_MODEL="joeddav/distilbert-base-uncased-go-emotions-student"
 ENV CLASSIFICATION_MODEL=${CLASSIFICATION_MODEL:-$CLASSIFICATION_MODEL}
 
+# story summarization module
+# slauw87/bart_summarisation - general purpose summarization model
+# Qiliang/bart-large-cnn-samsum-ChatGPT_v3 - summarization model optimized for chats
+# Qiliang/bart-large-cnn-samsum-ElectrifAi_v10 - nice results so far, but still being evaluated
+# distilbart-xsum-12-3 - faster, but pretty basic alternative
 ARG SUMMARIZATION_MODEL="Qiliang/bart-large-cnn-samsum-ElectrifAi_v10"
 ENV SUMMARIZATION_MODEL=${SUMMARIZATION_MODEL:-$SUMMARIZATION_MODEL}
 
+# image captioning module
+# Salesforce/blip-image-captioning-large - good base model
+# Salesforce/blip-image-captioning-base - slightly faster but less accurate
 ARG CAPTIONING_MODEL="Salesforce/blip-image-captioning-large"
 ENV CAPTIONING_MODEL=${CAPTIONING_MODEL:-$CAPTIONING_MODEL}
 
+# SD picture generation
+# ckpt/anything-v4.5-vae-swapped - anime style model
+# hakurei/waifu-diffusion - anime style model
+# philz1337/clarity - realistic style model
+# prompthero/openjourney - midjourney style model
+# ckpt/sd15 - base SD 1.5
+# stabilityai/stable-diffusion-2-1-base - base SD 2.1
 ARG SD_REMOTE_HOST="192.168.0.171"
 ENV SD_REMOTE_HOST=${SD_REMOTE_HOST:-$SD_REMOTE_HOST}
 
@@ -55,7 +51,6 @@ ENV RVC_MODEL=${RVC_MODEL:-$RVC_MODEL}
 #https://oobabooga.github.io/silero-samples/index.html
 #ARG WHISPER_MODEL="v3_en.pt"
 #ENV WHISPER_MODEL=${WHISPER_MODEL:-$WHISPER_MODEL}
-
 
 ARG API_KEY
 
@@ -133,14 +128,6 @@ RUN sed -i "s/whitelistMode: true/whitelistMode: false/" /home/node/app/default/
 RUN sed -i "s/listen: false/listen: true/" /home/node/app/default/config.yaml
 RUN sed -i "s/allowKeysExposure: false/allowKeysExposure: true/" /home/node/app/default/config.yaml
 
-# Install wxpython for talkingheads
-#RUN apt update && \
-#   apt install -y python3-wxgtk4.0 python3-wxgtk-webview4.0 python3-wxgtk-media4.0 && \
-#   rm -rf /var/lib/apt/lists/*
-
-#RUN apt update && \
-#   apt install make gcc libgtk-3-dev libwebkit2gtk-4.0-dev  libgstreamer-gl1.0-0 freeglut3 freeglut3-dev  python3-gst-1.0 libglib2.0-dev ubuntu-restricted-extras libgstreamer-plugins-base1.0-dev
-
 # Install extras
 RUN git clone https://github.com/SillyTavern/SillyTavern-extras /tmp/extras && \
     cp -r /tmp/extras /home/node/app/extras && \
@@ -153,9 +140,7 @@ RUN git clone https://github.com/SillyTavern/SillyTavern-extras /tmp/extras && \
     sed -i -E "/--extra-index-url https:\/\/download.pytorch.org\/whl\/cu118/d" requirements.txt && \
     sed -i -E "/torch/d" requirements.txt  && \
     python3 -m pip install pip -U && \
-# enable the following line with the index url to get gpu inference support instead of just cpu
     python3 -m pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 --extra-index-url https://download.pytorch.org/whl/cu118 -U && \
-#   python3 -m pip install torch torchvision torchaudio -U && \
     python3 -m pip install triton==2.0.0 fastapi==0.90.0 -U && \
     python3 -m pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-20.04 wxPython && \
     python3 -m pip install -U tha3 && \
@@ -163,11 +148,11 @@ RUN git clone https://github.com/SillyTavern/SillyTavern-extras /tmp/extras && \
     python3 -m pip install -r requirements-rvc.txt && \
     python3 -m pip install pysqlite3-binary tensorboardX git+https://github.com/One-sixth/fairseq.git -U && \
     wget https://github.com/cloudflare/cloudflared/releases/download/2023.5.0/cloudflared-linux-amd64 -O /tmp/cloudflared-linux-amd64 && \
-    git clone https://github.com/city-unit/SillyTavern-Chub-Search /tmp/chubsearch && \
-    cp -r /tmp/chubsearch /home/node/app/public/scripts/extensions/chubsearch && \
-    git clone https://github.com/city-unit/st-auto-tagger /tmp/st-auto-tagger && \
-    cp -r /tmp/st-auto-tagger /home/node/app/public/scripts/extensions/st-auto-tagger && \
     chmod +x /tmp/cloudflared-linux-amd64
+    #git clone https://github.com/city-unit/SillyTavern-Chub-Search /tmp/chubsearch && \
+    #cp -r /tmp/chubsearch /home/node/app/public/scripts/extensions/chubsearch && \
+    #git clone https://github.com/city-unit/st-auto-tagger /tmp/st-auto-tagger && \
+    #cp -r /tmp/st-auto-tagger /home/node/app/public/scripts/extensions/st-auto-tagger
 
 RUN if [ -z "${API_KEY}" ]; then \
       API_KEY=$(openssl rand -hex 5); \
@@ -180,6 +165,7 @@ RUN if [ -z "${API_KEY}" ]; then \
 
 ENV API_KEY=${API_KEY:-$API_KEY}
 
+RUN sed -i 's/"apiKey": ""/"apiKey": "${API_KEY}"/g; s/"autoConnect": false/"autoConnect": true/g' /home/node/app/default/settings.json
 
 # Cleanup unnecessary files
 RUN \
@@ -197,8 +183,7 @@ RUN \
 # Modify startup command to include extras server
 # --stt-whisper-model-path=\"\${WHISPER_MODEL}\"
 # --chroma-folder=/chromadb/
-RUN sed -i -E "s/exec node server.js/echo \"\\n***********************\\n\\nApi key is \$(cat extras\/api_key.txt)\\n\\n***********************\\n\"\n\ncd extras \&\& exec python3 server.py --listen --chroma-persist --cpu --secure --classification-model=\"\${CLASSIFICATION_MODEL}\" --summarization-model=\"\${SUMMARIZATION_MODEL}\" --captioning-model=\"\${CAPTIONING_MODEL}\" --enable-modules=\"\${MODULES}\" --max-content-length=2000 --rvc-save-file --sd-remote --sd-remote-host=\"\${SD_REMOTE_HOST}\" --sd-remote-port=\"\${SD_REMOTE_PORT}\" --talkinghead-gpu \&\n\nexec node server.js/g" /home/node/app/docker-entrypoint.sh
-
+RUN sed -i -E "s/exec node server.js/cd extras \&\& exec python3 server.py --listen --chroma-persist --cpu --secure --classification-model=\"\${CLASSIFICATION_MODEL}\" --summarization-model=\"\${SUMMARIZATION_MODEL}\" --captioning-model=\"\${CAPTIONING_MODEL}\" --enable-modules=\"\${MODULES}\" --max-content-length=2000 --rvc-save-file --sd-remote --sd-remote-host=\"\${SD_REMOTE_HOST}\" --sd-remote-port=\"\${SD_REMOTE_PORT}\" --talkinghead-gpu \&\n\nexec node server.js/g" /home/node/app/docker-entrypoint.sh
 
 EXPOSE 8000 5100
 
