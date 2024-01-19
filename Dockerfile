@@ -7,6 +7,12 @@ ARG APP_HOME=/home/node/app
 
 ARG PYTHON_VER=3.11.0
 
+ARG LISTEN_PORT="8000"
+ENV LISTEN_PORT=${LISTEN_PORT:-$LISTEN_PORT}
+
+ARG LISTEN_PORT_API="5100"
+ENV LISTEN_PORT_API=${LISTEN_PORT_API:-$LISTEN_PORT_API}
+
 ARG MODULES="caption,summarize,classify,sd,silero-tts,rvc,chromadb,whisper-stt,talkinghead"
 ENV MODULES=${MODULES:-$MODULES}
 
@@ -43,6 +49,12 @@ ENV SD_REMOTE_HOST=${SD_REMOTE_HOST:-$SD_REMOTE_HOST}
 ARG SD_REMOTE_PORT="7860"
 ENV SD_REMOTE_PORT=${SD_REMOTE_PORT:-$SD_REMOTE_PORT}
 
+ARG TG_REMOTE_HOST="192.168.0.171"
+ENV TG_REMOTE_HOST=${TG_REMOTE_HOST:-$TG_REMOTE_HOST}
+
+ARG TG_REMOTE_PORT="5000"
+ENV TG_REMOTE_PORT=${TG_REMOTE_PORT:-$TG_REMOTE_PORT}
+
 # voice models https://voice-models.com/top
 # gotta be rvmpe
 ARG RVC_MODEL="https://huggingface.co/MUSTAR/Hoshino_Ai_U/resolve/main/Hoshino_Ai_U.zip"
@@ -53,6 +65,7 @@ ENV RVC_MODEL=${RVC_MODEL:-$RVC_MODEL}
 #ENV WHISPER_MODEL=${WHISPER_MODEL:-$WHISPER_MODEL}
 
 ARG API_KEY
+ENV API_KEY=${API_KEY:-$API_KEY}
 
 # Build and install python3.11 for chromadb
 RUN apt update -y \
@@ -126,6 +139,7 @@ RUN \
 RUN sed -i "s/securityOverride: false/securityOverride: true/" /home/node/app/default/config.yaml
 RUN sed -i "s/whitelistMode: true/whitelistMode: false/" /home/node/app/default/config.yaml
 RUN sed -i "s/listen: false/listen: true/" /home/node/app/default/config.yaml
+RUN sed -i "s/port: 8000/port: ${LISTEN_PORT}/" /home/node/app/default/config.yaml
 RUN sed -i "s/allowKeysExposure: false/allowKeysExposure: true/" /home/node/app/default/config.yaml
 
 # Install extras
@@ -158,14 +172,16 @@ RUN if [ -z "${API_KEY}" ]; then \
       API_KEY=$(openssl rand -hex 5); \
       echo "${API_KEY}" > /home/node/app/extras/api_key.txt; \
       export API_KEY=${API_KEY}; \
+      sed -i "s/\"apiKey\": \"\"/\"apiKey\": \"${API_KEY}\"/g" /home/node/app/default/settings.json; \
     else \
       echo "${API_KEY}" > /home/node/app/extras/api_key.txt; \
       export API_KEY=${API_KEY}; \
+      sed -i "s/\"apiKey\": \"\"/\"apiKey\": \"${API_KEY}\"/g" /home/node/app/default/settings.json; \
     fi
 
-ENV API_KEY=${API_KEY:-$API_KEY}
-
-RUN sed -i 's/"apiKey": ""/"apiKey": "${API_KEY}"/g; s/"autoConnect": false/"autoConnect": true/g' /home/node/app/default/settings.json
+RUN sed -i 's/"autoConnect": false/"autoConnect": true/g' /home/node/app/default/settings.json
+RUN sed -i 's/"main_api": "koboldhorde"/"main_api": "textgenerationwebui"/g' /home/node/app/default/settings.json
+RUN sed -i "0,/\"negative_prompt\": \"\"/{s//\"negative_prompt\": \"\",\\n        \"type\": \"ooba\",\\n        \"server_urls\": {\\n            \"ooba\": \"http:\/\/${TG_REMOTE_HOST}:${TG_REMOTE_PORT}\/\"\\n        }/}" /home/node/app/default/settings.json
 
 # Cleanup unnecessary files
 RUN \
@@ -183,7 +199,7 @@ RUN \
 # Modify startup command to include extras server
 # --stt-whisper-model-path=\"\${WHISPER_MODEL}\"
 # --chroma-folder=/chromadb/
-RUN sed -i -E "s/exec node server.js/cd extras \&\& exec python3 server.py --listen --chroma-persist --cpu --secure --classification-model=\"\${CLASSIFICATION_MODEL}\" --summarization-model=\"\${SUMMARIZATION_MODEL}\" --captioning-model=\"\${CAPTIONING_MODEL}\" --enable-modules=\"\${MODULES}\" --max-content-length=2000 --rvc-save-file --sd-remote --sd-remote-host=\"\${SD_REMOTE_HOST}\" --sd-remote-port=\"\${SD_REMOTE_PORT}\" --talkinghead-gpu \&\n\nexec node server.js/g" /home/node/app/docker-entrypoint.sh
+RUN sed -i -E "s/exec node server.js/cd extras \&\& exec python3 server.py --listen --port \${LISTEN_PORT_API} --chroma-persist --cpu --secure --classification-model=\"\${CLASSIFICATION_MODEL}\" --summarization-model=\"\${SUMMARIZATION_MODEL}\" --captioning-model=\"\${CAPTIONING_MODEL}\" --enable-modules=\"\${MODULES}\" --max-content-length=2000 --rvc-save-file --sd-remote --sd-remote-host=\"\${SD_REMOTE_HOST}\" --sd-remote-port=\"\${SD_REMOTE_PORT}\" --talkinghead-gpu \&\n\nexec node server.js/g" /home/node/app/docker-entrypoint.sh
 
 EXPOSE 8000 5100
 
