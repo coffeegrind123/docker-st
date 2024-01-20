@@ -1,11 +1,11 @@
 #docker build --no-cache -t docker-st:latest .; docker run -it -p 8000:8000 -p 5100:5100 --name "docker-st" --rm docker-st:latest
-FROM node:20-bookworm
+FROM python:3.11.7-bookworm
 ENV DEBIAN_FRONTEND noninteractive
 
 # Arguments
-ARG APP_HOME=/home/node/app
+ARG APP_HOME=/content/sillytavern
 
-ARG PYTHON_VER=3.11.0
+#ARG PYTHON_VER=3.11.0
 
 ARG LISTEN_PORT="8000"
 ENV LISTEN_PORT=${LISTEN_PORT:-$LISTEN_PORT}
@@ -67,40 +67,13 @@ ENV RVC_MODEL=${RVC_MODEL:-$RVC_MODEL}
 ARG API_KEY
 ENV API_KEY=${API_KEY:-$API_KEY}
 
-# Build and install python3.11 for chromadb
-RUN apt update -y \
-    && apt upgrade -y \
-    && apt -y install build-essential \
-        zlib1g-dev \
-        libncurses5-dev \
-        libgdbm-dev \ 
-        libnss3-dev \
-        libssl-dev \
-        libreadline-dev \
-        libffi-dev \
-        libsqlite3-dev \
-        libbz2-dev \
-        wget \
-    && apt purge -y imagemagick imagemagick-6-common 
-
-RUN cd /usr/src \
-    && wget https://www.python.org/ftp/python/$PYTHON_VER/Python-$PYTHON_VER.tgz \
-    && tar -xzf Python-$PYTHON_VER.tgz \
-    && cd Python-$PYTHON_VER \
-    && ./configure --enable-loadable-sqlite-extensions --enable-optimizations \
-    && make profile-gen-stamp; ./python -m test.regrtest --pgo -j8; make build_all_merge_profile; touch profile-run-stamp; make \
-    && make altinstall
-
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/local/bin/python3.11 1
-
-# Clean up build packages
-RUN apt autoremove -y --purge build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev libbz2-dev \
-    && apt clean \
-    && rm -rf /var/lib/apt/lists/* /usr/src/Python-$PYTHON_VER.tgz
-
 # Install sillytavern packages
-RUN apt update && \
-    apt install -y tini git dos2unix sqlite3 ffmpeg unzip && \
+RUN apt update && apt upgrade -y && \
+    apt install -y tini git dos2unix sqlite3 ffmpeg unzip curl wget
+
+# Install node
+RUN curl -fsSL https://deb.nodesource.com/setup_current.x | bash - && \
+    apt install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
 # Create app directory
@@ -109,10 +82,8 @@ WORKDIR ${APP_HOME}
 RUN git clone https://github.com/SillyTavern/SillyTavern /tmp/source
 
 # Install app dependencies
-RUN cp /tmp/source/package*.json /tmp/source/post-install.js ./
-RUN \
-  echo "*** Install npm packages ***" && \
-  npm install && npm cache clean --force
+RUN cp /tmp/source/package*.json /tmp/source/post-install.js ./ && \
+    npm install && npm cache clean --force
 
 # Bundle app source
 RUN cp -r /tmp/source/* ./
@@ -121,85 +92,83 @@ RUN cp -r /tmp/source/* ./
 RUN mkdir public/user
 
 # Copy default chats, characters and user avatars to <folder>.default folder
-RUN \
-  IFS="," RESOURCES="assets,backgrounds,user,context,instruct,QuickReplies,movingUI,themes,characters,chats,groups,group chats,User Avatars,worlds,OpenAI Settings,NovelAI Settings,KoboldAI Settings,TextGen Settings" && \
-  \
-  echo "*** Store default $RESOURCES in <folder>.default ***" && \
-  for R in $RESOURCES; do mv "public/$R" "public/$R.default"; done || true && \
-  \
-  echo "*** Create symbolic links to config directory ***" && \
-  for R in $RESOURCES; do ln -s "../config/$R" "public/$R"; done || true && \
-  \
-  rm -f "config.yaml" "public/settings.json" || true && \
-  ln -s "./config/config.yaml" "config.yaml" || true && \
-  ln -s "../config/settings.json" "public/settings.json" || true && \
-  mkdir "config" || true
+RUN IFS="," RESOURCES="assets,backgrounds,user,context,instruct,QuickReplies,movingUI,themes,characters,chats,groups,group chats,User Avatars,worlds,OpenAI Settings,NovelAI Settings,KoboldAI Settings,TextGen Settings" && \
+    for R in $RESOURCES; do mv "public/$R" "public/$R.default"; done || true && \
+    for R in $RESOURCES; do ln -s "../config/$R" "public/$R"; done || true && \
+    rm -f "config.yaml" "public/settings.json" || true && \
+    ln -s "./config/config.yaml" "config.yaml" || true && \
+    ln -s "../config/settings.json" "public/settings.json" || true && \
+    mkdir "config" || true
 
 # Necessary config modifications
-RUN sed -i "s/securityOverride: false/securityOverride: true/" /home/node/app/default/config.yaml
-RUN sed -i "s/whitelistMode: true/whitelistMode: false/" /home/node/app/default/config.yaml
-RUN sed -i "s/listen: false/listen: true/" /home/node/app/default/config.yaml
-RUN sed -i "s/port: 8000/port: ${LISTEN_PORT}/" /home/node/app/default/config.yaml
-RUN sed -i "s/allowKeysExposure: false/allowKeysExposure: true/" /home/node/app/default/config.yaml
+RUN sed -i "s/securityOverride: false/securityOverride: true/" /content/sillytavern/default/config.yaml && \
+    sed -i "s/whitelistMode: true/whitelistMode: false/" /content/sillytavern/default/config.yaml && \
+    sed -i "s/listen: false/listen: true/" /content/sillytavern/default/config.yaml && \
+    sed -i "s/port: 8000/port: ${LISTEN_PORT}/" /content/sillytavern/default/config.yaml && \
+    sed -i "s/allowKeysExposure: false/allowKeysExposure: true/" /content/sillytavern/default/config.yaml
 
 # Install extras
 RUN git clone https://github.com/SillyTavern/SillyTavern-extras /tmp/extras && \
-    cp -r /tmp/extras /home/node/app/extras && \
+    cp -r /tmp/extras /content/sillytavern/extras && \
     #git clone https://github.com/Cohee1207/tts_samples /tmp/samples && \
-    #cp -r /tmp/samples/* /home/node/app/extras && \
+    #cp -r /tmp/samples/* /content/sillytavern/extras && \
     wget "$RVC_MODEL" -P /tmp/model && \
-    for f in /tmp/model/*.zip; do unzip "$f" -d "/home/node/app/extras/data/models/rvc/$(basename "$f" .zip)"; done && \
-    cd /home/node/app/extras && \
+    for f in /tmp/model/*.zip; do unzip "$f" -d "/content/sillytavern/extras/data/models/rvc/$(basename "$f" .zip)"; done && \
+    cd /content/sillytavern/extras && \
     npm install -g localtunnel && npm cache clean --force && \
-    sed -i -E "/--extra-index-url https:\/\/download.pytorch.org\/whl\/cu118/d" requirements.txt && \
-    sed -i -E "/torch/d" requirements.txt  && \
-    python3 -m pip install pip -U && \
-    python3 -m pip install torch==2.0.1+cu118 torchvision==0.15.2+cu118 torchaudio==2.0.2+cu118 --extra-index-url https://download.pytorch.org/whl/cu118 -U && \
-    python3 -m pip install triton==2.0.0 fastapi==0.90.0 -U && \
-    python3 -m pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-20.04 wxPython && \
-    python3 -m pip install -U tha3 && \
+    python3 -m venv myenv && \
+    . myenv/bin/activate && \
+    python3 -m pip install pip --upgrade && \
+    python3 -m pip install wheel && \
     python3 -m pip install -r requirements.txt && \
     python3 -m pip install -r requirements-rvc.txt && \
-    python3 -m pip install pysqlite3-binary tensorboardX git+https://github.com/One-sixth/fairseq.git -U && \
+    deactivate && \
     wget https://github.com/cloudflare/cloudflared/releases/download/2023.5.0/cloudflared-linux-amd64 -O /tmp/cloudflared-linux-amd64 && \
-    chmod +x /tmp/cloudflared-linux-amd64
-    #git clone https://github.com/city-unit/SillyTavern-Chub-Search /tmp/chubsearch && \
-    #cp -r /tmp/chubsearch /home/node/app/public/scripts/extensions/chubsearch && \
-    #git clone https://github.com/city-unit/st-auto-tagger /tmp/st-auto-tagger && \
-    #cp -r /tmp/st-auto-tagger /home/node/app/public/scripts/extensions/st-auto-tagger
+    chmod +x /tmp/cloudflared-linux-amd64 && \
+    git clone https://github.com/city-unit/SillyTavern-Chub-Search /tmp/chubsearch && \
+    cp -r /tmp/chubsearch /content/sillytavern/public/scripts/extensions/chubsearch && \
+    git clone https://github.com/city-unit/st-auto-tagger /tmp/st-auto-tagger && \
+    cp -r /tmp/st-auto-tagger /content/sillytavern/public/scripts/extensions/st-auto-tagger && \
+    git clone https://github.com/SillyTavern/Extension-RVC /tmp/rvc && \
+    cp -r /tmp/rvc /content/sillytavern/public/scripts/extensions/rvc && \
+    git clone https://github.com/SillyTavern/Extension-Randomizer /tmp/randomizer && \
+    cp -r /tmp/randomizer /content/sillytavern/public/scripts/extensions/randomizer && \
+    git clone https://github.com/SillyTavern/Extension-ChromaDB /tmp/chromadb && \
+    cp -r /tmp/chromadb /content/sillytavern/public/scripts/extensions/chromadb
 
 RUN if [ -z "${API_KEY}" ]; then \
       API_KEY=$(openssl rand -hex 5); \
-      echo "${API_KEY}" > /home/node/app/extras/api_key.txt; \
+      echo "${API_KEY}" > /content/sillytavern/extras/api_key.txt; \
       export API_KEY=${API_KEY}; \
-      sed -i "s/\"apiKey\": \"\"/\"apiKey\": \"${API_KEY}\"/g" /home/node/app/default/settings.json; \
+      sed -i "s/\"apiKey\": \"\"/\"apiKey\": \"${API_KEY}\"/g" /content/sillytavern/default/settings.json; \
     else \
-      echo "${API_KEY}" > /home/node/app/extras/api_key.txt; \
+      echo "${API_KEY}" > /content/sillytavern/extras/api_key.txt; \
       export API_KEY=${API_KEY}; \
-      sed -i "s/\"apiKey\": \"\"/\"apiKey\": \"${API_KEY}\"/g" /home/node/app/default/settings.json; \
+      sed -i "s/\"apiKey\": \"\"/\"apiKey\": \"${API_KEY}\"/g" /content/sillytavern/default/settings.json; \
     fi
 
-RUN sed -i 's/"autoConnect": false/"autoConnect": true/g' /home/node/app/default/settings.json
-RUN sed -i 's/"main_api": "koboldhorde"/"main_api": "textgenerationwebui"/g' /home/node/app/default/settings.json
-RUN sed -i "0,/\"negative_prompt\": \"\"/{s//\"negative_prompt\": \"\",\\n        \"type\": \"ooba\",\\n        \"server_urls\": {\\n            \"ooba\": \"http:\/\/${TG_REMOTE_HOST}:${TG_REMOTE_PORT}\/\"\\n        }/}" /home/node/app/default/settings.json
+RUN sed -i 's/"autoConnect": false/"autoConnect": true/g' /content/sillytavern/default/settings.json
+RUN sed -i 's/"main_api": "koboldhorde"/"main_api": "textgenerationwebui"/g' /content/sillytavern/default/settings.json
+RUN sed -i "0,/\"negative_prompt\": \"\"/{s//\"negative_prompt\": \"\",\\n        \"type\": \"ooba\",\\n        \"server_urls\": {\\n            \"ooba\": \"http:\/\/${TG_REMOTE_HOST}:${TG_REMOTE_PORT}\/\"\\n        }/}" /content/sillytavern/default/settings.json
+
+RUN sed -i '/^echo "Resource/ s/^/# /' ./docker-entrypoint.sh
 
 # Cleanup unnecessary files
-RUN \
-  echo "*** Cleanup ***" && \
-  mv "./docker/docker-entrypoint.sh" "./" && \
-  rm -rf "./docker" && \
-  rm -rf "/tmp/source" && \
-  rm -rf "/tmp/extras" && \
-  rm -rf "/tmp/samples" && \
-  echo "*** Make docker-entrypoint.sh executable ***" && \
-  chmod +x "./docker-entrypoint.sh" && \
-  echo "*** Convert line endings to Unix format ***" && \
-  dos2unix "./docker-entrypoint.sh"
+RUN echo "*** Cleanup ***" && \
+    mv "./docker/docker-entrypoint.sh" "./" && \
+    rm -rf "./docker" && \
+    rm -rf "/tmp/source" && \
+    rm -rf "/tmp/extras" && \
+    rm -rf "/tmp/samples" && \
+    echo "*** Make docker-entrypoint.sh executable ***" && \
+    chmod +x "./docker-entrypoint.sh" && \
+    echo "*** Convert line endings to Unix format ***" && \
+    dos2unix "./docker-entrypoint.sh"
 
 # Modify startup command to include extras server
 # --stt-whisper-model-path=\"\${WHISPER_MODEL}\"
-# --chroma-folder=/chromadb/
-RUN sed -i -E "s/exec node server.js/cd extras \&\& exec python3 server.py --listen --port \${LISTEN_PORT_API} --chroma-persist --cpu --secure --classification-model=\"\${CLASSIFICATION_MODEL}\" --summarization-model=\"\${SUMMARIZATION_MODEL}\" --captioning-model=\"\${CAPTIONING_MODEL}\" --enable-modules=\"\${MODULES}\" --max-content-length=2000 --rvc-save-file --sd-remote --sd-remote-host=\"\${SD_REMOTE_HOST}\" --sd-remote-port=\"\${SD_REMOTE_PORT}\" --talkinghead-gpu \&\n\nexec node server.js/g" /home/node/app/docker-entrypoint.sh
+
+RUN sed -i -E "s/exec node server.js/cd extras \&\& . myenv\/bin\/activate \&\& exec python3 server.py --listen --port \${LISTEN_PORT_API} --chroma-persist --chroma-folder=/content/sillytavern/chromadb/ --cpu --secure --classification-model=\"\${CLASSIFICATION_MODEL}\" --summarization-model=\"\${SUMMARIZATION_MODEL}\" --captioning-model=\"\${CAPTIONING_MODEL}\" --enable-modules=\"\${MODULES}\" --max-content-length=2000 --rvc-save-file --sd-remote --sd-remote-host=\"\${SD_REMOTE_HOST}\" --sd-remote-port=\"\${SD_REMOTE_PORT}\" --talkinghead-gpu \&\n\nexec node server.js/g" /content/sillytavern/docker-entrypoint.sh
 
 EXPOSE 8000 5100
 
