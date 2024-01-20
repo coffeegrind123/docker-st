@@ -5,8 +5,6 @@ ENV DEBIAN_FRONTEND noninteractive
 # Arguments
 ARG APP_HOME=/content/sillytavern
 
-#ARG PYTHON_VER=3.11.0
-
 ARG LISTEN_PORT="8000"
 ENV LISTEN_PORT=${LISTEN_PORT:-$LISTEN_PORT}
 
@@ -124,17 +122,17 @@ RUN git clone https://github.com/SillyTavern/SillyTavern-extras /tmp/extras && \
     python3 -m pip install -r requirements-rvc.txt && \
     deactivate && \
     wget https://github.com/cloudflare/cloudflared/releases/download/2023.5.0/cloudflared-linux-amd64 -O /tmp/cloudflared-linux-amd64 && \
-    chmod +x /tmp/cloudflared-linux-amd64 && \
-    git clone https://github.com/city-unit/SillyTavern-Chub-Search /tmp/chubsearch && \
-    cp -r /tmp/chubsearch /content/sillytavern/public/scripts/extensions/chubsearch && \
-    git clone https://github.com/city-unit/st-auto-tagger /tmp/st-auto-tagger && \
-    cp -r /tmp/st-auto-tagger /content/sillytavern/public/scripts/extensions/st-auto-tagger && \
-    git clone https://github.com/SillyTavern/Extension-RVC /tmp/rvc && \
-    cp -r /tmp/rvc /content/sillytavern/public/scripts/extensions/rvc && \
-    git clone https://github.com/SillyTavern/Extension-Randomizer /tmp/randomizer && \
-    cp -r /tmp/randomizer /content/sillytavern/public/scripts/extensions/randomizer && \
-    git clone https://github.com/SillyTavern/Extension-ChromaDB /tmp/chromadb && \
-    cp -r /tmp/chromadb /content/sillytavern/public/scripts/extensions/chromadb
+    chmod +x /tmp/cloudflared-linux-amd64
+    #git clone https://github.com/city-unit/SillyTavern-Chub-Search /tmp/chubsearch && \
+    #cp -r /tmp/chubsearch /content/sillytavern/public/scripts/extensions/chubsearch && \
+    #git clone https://github.com/city-unit/st-auto-tagger /tmp/st-auto-tagger && \
+    #cp -r /tmp/st-auto-tagger /content/sillytavern/public/scripts/extensions/st-auto-tagger && \
+    #git clone https://github.com/SillyTavern/Extension-RVC /tmp/rvc && \
+    #cp -r /tmp/rvc /content/sillytavern/public/scripts/extensions/rvc && \
+    #git clone https://github.com/SillyTavern/Extension-Randomizer /tmp/randomizer && \
+    #cp -r /tmp/randomizer /content/sillytavern/public/scripts/extensions/randomizer && \
+    #git clone https://github.com/SillyTavern/Extension-ChromaDB /tmp/chromadb && \
+    #cp -r /tmp/chromadb /content/sillytavern/public/scripts/extensions/chromadb
 
 RUN if [ -z "${API_KEY}" ]; then \
       API_KEY=$(openssl rand -hex 5); \
