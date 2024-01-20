@@ -151,8 +151,6 @@ RUN sed -i 's/"autoConnect": false/"autoConnect": true/g' /content/sillytavern/d
 RUN sed -i 's/"main_api": "koboldhorde"/"main_api": "textgenerationwebui"/g' /content/sillytavern/default/settings.json
 RUN sed -i "0,/\"negative_prompt\": \"\"/{s//\"negative_prompt\": \"\",\\n        \"type\": \"ooba\",\\n        \"server_urls\": {\\n            \"ooba\": \"http:\/\/${TG_REMOTE_HOST}:${TG_REMOTE_PORT}\/\"\\n        }/}" /content/sillytavern/default/settings.json
 
-RUN sed -i '/^echo "Resource/ s/^/# /' ./docker-entrypoint.sh
-
 # Cleanup unnecessary files
 RUN echo "*** Cleanup ***" && \
     mv "./docker/docker-entrypoint.sh" "./" && \
