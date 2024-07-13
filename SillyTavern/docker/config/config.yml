@@ -18,7 +18,7 @@ autorun: true
 disableThumbnails: false
 thumbnailsQuality: 95
 avatarThumbnailsPng: false
-allowKeysExposure: false
+allowKeysExposure: true
 skipContentCheck: false
 disableChatBackup: false
 numberOfBackups: 50
