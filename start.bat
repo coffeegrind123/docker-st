@@ -21,7 +21,7 @@ if exist "%directory%" (
 
 xcopy /s /e /y "..\replace\SillyTavern" ".\"
 
-REM Check if it's the first run
+REM Run
 cd docker
 docker compose up -d
 
