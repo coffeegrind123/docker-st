@@ -6,7 +6,7 @@
     "user_avatar": "user-default.png",
     "amount_gen": 250,
     "max_context": 2048,
-    "main_api": "koboldhorde",
+    "main_api": "textgenerationwebui",
     "world_info_settings": {
         "world_info": {
             "globalSelect": []
@@ -69,6 +69,10 @@
             "min_p",
             "temperature"
         ],
+        "type": "ollama",
+        "server_urls": {
+            "ollama": "http://host.docker.internal:11434/v1"
+        },
         "mirostat_mode": 0,
         "mirostat_tau": 5,
         "mirostat_eta": 0.1,
@@ -192,6 +196,13 @@
         "custom_stopping_strings_macro": true,
         "fuzzy_search": true,
         "encode_tags": false,
+        "servers": [
+            {
+                "label": "ollama",
+                "url": "http://host.docker.internal:11434/v1",
+                "lastConnection": -1
+            }
+        ],
         "enableLabMode": false,
         "enableZenSliders": false,
         "ui_mode": 1,
@@ -614,11 +625,12 @@
         "openai_model": "gpt-3.5-turbo",
         "claude_model": "claude-instant-v1",
         "ai21_model": "j2-ultra",
+        "custom_url": "http://host.docker.internal:11434/v1",
         "windowai_model": "",
         "openrouter_model": "OR_Website",
         "jailbreak_system": true,
         "reverse_proxy": "",
-        "chat_completion_source": "openai",
+        "chat_completion_source": "custom",
         "max_context_unlocked": false,
         "api_url_scale": "",
         "show_external_models": false,
